@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>GIF Tracker</title>
+    <style>
+        body {
+            background: #000;
+            color: #fff;
+            font-family: sans-serif;
+        }
+
+        #container {
+            position: relative;
+            display: inline-block;
+        }
+
+        #bg-video {
+            width: 960px;
+            pointer-events: none;
+        }
+
+        .box {
+            position: absolute;
+            border: 2px solid #0f0;
+            background: rgba(0, 255, 0, 0.2);
+            pointer-events: none;
+        }
+
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            z-index: 100;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="controls">
+        <h3>Tracker Setup</h3>
+        <button onclick="startTracking()">Start Tracking (Click to track forklift)</button>
+        <button onclick="stopTracking()">Stop & Log Keyframes</button>
+        <div id="log"></div>
+    </div>
+    <div id="container">
+        <img src="warehouse-bg.gif" id="bg-video">
+        <div id="tracker" class="box" style="display:none; width: 150px; height: 180px;"></div>
+    </div>
+    <script>
+        const container = document.getElementById('container');
+        const tracker = document.getElementById('tracker');
+        const log = document.getElementById('log');
+        let tracking = false;
+        let startTime = 0;
+        let keyframes = [];
+        let mouseX = 0;
+        let mouseY = 0;
+
+        container.addEventListener('mousemove', (e) => {
+            const rect = container.getBoundingClientRect();
+            mouseX = ((e.clientX - rect.left) / rect.width) * 100;
+            mouseY = ((e.clientY - rect.top) / rect.height) * 100;
+            if (tracking) {
+                tracker.style.left = (mouseX - 5) + '%';
+                tracker.style.top = (mouseY - 10) + '%';
+            }
+        });
+
+        function recordFrame() {
+            if (!tracking) return;
+            const t = Date.now() - startTime;
+            keyframes.push({ time: t, x: mouseX - 5, y: mouseY - 10 });
+            requestAnimationFrame(recordFrame);
+        }
+
+        function startTracking() {
+            // Reload gif to sync
+            const img = document.getElementById('bg-video');
+            img.src = img.src.split('?')[0] + '?' + Date.now();
+
+            tracker.style.display = 'block';
+            tracking = true;
+            startTime = Date.now();
+            keyframes = [];
+            log.innerHTML = 'Tracking... Follow the forklift!';
+            requestAnimationFrame(recordFrame);
+        }
+
+        function stopTracking() {
+            tracking = false;
+            log.innerHTML = 'Done. See console.';
+            const totalTime = keyframes[keyframes.length - 1].time;
+            let css = '@keyframes drift1 {\n';
+
+            // Sample 10 points
+            const step = totalTime / 10;
+            for (let i = 0; i <= 10; i++) {
+                const targetTime = i * step;
+                let closest = keyframes[0];
+                for (const kf of keyframes) {
+                    if (Math.abs(kf.time - targetTime) < Math.abs(closest.time - targetTime)) {
+                        closest = kf;
+                    }
+                }
+                css += `  ${i * 10}% { top: ${closest.y.toFixed(2)}%; left: ${closest.x.toFixed(2)}%; }\n`;
+            }
+            css += '}';
+            console.log('Total duration:', totalTime, 'ms');
+            console.log(css);
+        }
+    </script>
+</body>
+
+</html>

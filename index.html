@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VisionGuard AI - AI-Powered Warehouse CCTV Surveillance</title>
+  <meta name="description"
+    content="VisionGuard AI: Real-time AI-powered warehouse CCTV surveillance with intelligent object detection, inventory tracking, and zero blind spots." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;600;700;900&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+
+  <!-- SVG Noise Filter Definition -->
+  <svg style="display:none;">
+    <defs>
+      <filter id="noise">
+        <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
+        <feColorMatrix type="matrix" values="1 0 0 0 0, 0 1 0 0 0, 0 0 1 0 0, 0 0 0 0.15 0" />
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- ═══════════════ VIDEO BACKGROUND ═══════════════ -->
+  <div id="video-bg">
+    <video autoplay muted loop playsinline id="bg-video">
+      <source src="2745883-hd_1920_1080_25fps.mp4" type="video/mp4" />
+    </video>
+    <div class="video-overlay noise-overlay"></div>
+    <div class="video-overlay scanline-overlay"></div>
+    <div class="video-overlay vignette-overlay"></div>
+  </div>
+
+  <!-- ═══════════════ CORNER BRACKET FRAMES ═══════════════ -->
+  <div class="corner-bracket top-left-bracket"></div>
+  <div class="corner-bracket top-right-bracket"></div>
+  <div class="corner-bracket bottom-left-bracket"></div>
+  <div class="corner-bracket bottom-right-bracket"></div>
+
+
+
+  <!-- ═══════════════ CORNER TELEMETRY UI ═══════════════ -->
+  <div class="corner-ui top-left">
+    <div class="brand-row">
+      <span class="rec-dot" id="rec-dot"></span>
+      <span class="rec-label">REC</span>
+    </div>
+    <span class="stat-label cam-id">CAM-07 &bull; WAREHOUSE EAST</span>
+  </div>
+
+  <!-- ═══════════════ CENTER HEADER BRANDING ═══════════════ -->
+  <div class="header-center">
+    <h1>VISIONGUARD AI</h1>
+  </div>
+
+  <div class="corner-ui top-right align-right">
+    <div class="status-badges">
+      <span class="badge badge-active">● LIVE</span>
+      <span class="badge badge-ai">AI ACTIVE</span>
+    </div>
+  </div>
+
+  <div class="corner-ui bottom-left">
+    <div class="stat-group">
+      <span class="stat-value accent">ZERO</span>
+      <span class="stat-label">BLIND SPOTS</span>
+    </div>
+    <div class="stat-group">
+      <span class="stat-value accent">24/7</span>
+      <span class="stat-label">MONITORING</span>
+    </div>
+  </div>
+
+  <div class="corner-ui bottom-right align-right">
+    <div class="stat-group">
+      <span class="stat-value">REAL-TIME</span>
+      <span class="stat-label">INVENTORY TRACKING</span>
+    </div>
+    <div class="stat-group">
+      <span class="stat-label" id="timestamp">0000-00-00 00:00:00</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════ CENTER HERO CTA ═══════════════ -->
+  <div id="hero-cta">
+    <p class="hero-tagline">AI-Powered Warehouse Surveillance</p>
+    <h2 class="hero-headline">See Everything.<br />Miss Nothing.</h2>
+    <button id="request-btn" class="cta-button">
+      <span class="cta-icon">◉</span>
+      REQUEST DEMO
+    </button>
+    <p class="hero-sub">Real-time detection &bull; Zero blind spots &bull; Instant alerts</p>
+  </div>
+
+  <!-- ═══════════════ LEAD CAPTURE MODAL ═══════════════ -->
+  <div id="form-modal" class="modal hidden">
+    <div class="modal-content">
+      <button id="close-modal" class="close-btn">&times;</button>
+      <div id="form-inner">
+        <h2>SYSTEM ACCESS</h2>
+        <p class="modal-desc">Request a live demo of VisionGuard AI for your facility.</p>
+        <form id="contact-form" autocomplete="off">
+          <div class="input-group">
+            <input type="text" id="name" name="name" placeholder="OPERATOR NAME" required />
+            <span class="input-line"></span>
+          </div>
+          <div class="input-group">
+            <input type="email" id="email" name="email" placeholder="COMM LINK (EMAIL)" required />
+            <span class="input-line"></span>
+          </div>
+          <div class="input-group">
+            <input type="text" id="company" name="company" placeholder="FACILITY DESIGNATION (COMPANY)" required />
+            <span class="input-line"></span>
+          </div>
+          <button type="submit" class="submit-btn">INITIALIZE</button>
+        </form>
+      </div>
+      <div id="success-message" class="hidden">
+        <div class="success-icon">✓</div>
+        <h2>ACCESS REQUESTED</h2>
+        <p>FORWARDING TO SECURE SCHEDULING. STANDBY.</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+
+</html>
