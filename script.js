@@ -35,6 +35,7 @@
   modal.classList.add('hidden');
 
   function openModal() {
+    form.reset();
     modal.classList.remove('hidden');
     formInner.style.display = 'block';
     successMsg.classList.add('hidden');
@@ -75,16 +76,35 @@
     submitBtn.textContent = 'AUTHENTICATING...';
     submitBtn.disabled = true;
 
-    setTimeout(() => {
-      formInner.style.display = 'none';
-      successMsg.classList.remove('hidden');
+    // Send form data securely via FormSubmit
+    fetch("https://formsubmit.co/ajax/tenusersclub@gmail.com", {
+      method: "POST",
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        name: name,
+        company: company,
+        email: email,
+        _subject: "New VisionGuard AI Demo Request"
+      })
+    })
+      .then(response => response.json())
+      .then(data => {
+        formInner.style.display = 'none';
+        successMsg.classList.remove('hidden');
 
-      setTimeout(() => {
-        // Redirect to booking page
-        window.location.href = 'https://cal.com/shivambhatia';
-      }, 1500);
-
-    }, 1500);
+        setTimeout(() => {
+          // Redirect to booking page
+          window.location.href = 'https://cal.com/shivambhatia';
+        }, 1500);
+      })
+      .catch(error => {
+        console.error('Submission Error:', error);
+        submitBtn.textContent = 'ERROR - TRY AGAIN';
+        submitBtn.disabled = false;
+      });
   });
 
   // ─── GLITCH EFFECT (Occasional jitter on text) ───

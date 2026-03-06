@@ -21,6 +21,11 @@
 
   --transition-fast: 0.2s ease;
   --transition-med: 0.4s ease;
+
+  /* Fluid UI Scaling */
+  --ui-margin: clamp(1rem, 2.5vw, 2.5rem);
+  --bracket-size: clamp(1.5rem, 3.5vw, 3rem);
+  --bracket-offset: clamp(0.75rem, 1.25vw, 1.25rem);
 }
 
 *,
@@ -117,35 +122,35 @@ body {
 .corner-bracket {
   position: absolute;
   z-index: 8;
-  width: 40px;
-  height: 40px;
+  width: var(--bracket-size);
+  height: var(--bracket-size);
   pointer-events: none;
 }
 
 .top-left-bracket {
-  top: 16px;
-  left: 16px;
+  top: var(--bracket-offset);
+  left: var(--bracket-offset);
   border-top: 2px solid var(--color-accent);
   border-left: 2px solid var(--color-accent);
 }
 
 .top-right-bracket {
-  top: 16px;
-  right: 16px;
+  top: var(--bracket-offset);
+  right: var(--bracket-offset);
   border-top: 2px solid var(--color-accent);
   border-right: 2px solid var(--color-accent);
 }
 
 .bottom-left-bracket {
-  bottom: 16px;
-  left: 16px;
+  bottom: var(--bracket-offset);
+  left: var(--bracket-offset);
   border-bottom: 2px solid var(--color-accent);
   border-left: 2px solid var(--color-accent);
 }
 
 .bottom-right-bracket {
-  bottom: 16px;
-  right: 16px;
+  bottom: var(--bracket-offset);
+  right: var(--bracket-offset);
   border-bottom: 2px solid var(--color-accent);
   border-right: 2px solid var(--color-accent);
 }
@@ -154,10 +159,10 @@ body {
 .corner-ui {
   position: absolute;
   z-index: 10;
-  padding: 2.5vw;
+  padding: var(--ui-margin);
   display: flex;
   flex-direction: column;
-  gap: 0.5vh;
+  gap: 0.8vh;
 }
 
 .top-left {
@@ -194,7 +199,7 @@ body {
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
-  padding: 3.5vw 2.5vw;
+  padding: var(--ui-margin);
 }
 
 /* ─── BRAND ROW (REC) ─── */
@@ -269,10 +274,9 @@ h1 {
 }
 
 .cam-id {
-  font-size: 0.65rem;
+  font-size: clamp(0.55rem, 0.75vw, 0.75rem);
   letter-spacing: 0.2em;
-  margin-top: 0.3rem;
-  /* Adjusted since logo is gone */
+  margin-top: 0.4rem;
 }
 
 /* ─── STATUS BADGES ─── */
@@ -363,35 +367,37 @@ h1 {
 #hero-cta {
   position: absolute;
   z-index: 15;
-  bottom: 18vh;
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.5rem;
+  gap: clamp(0.75rem, 1.5vh, 2rem);
   background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  padding: 3.5rem 4rem;
-  border-radius: 6px;
+  padding: clamp(1.5rem, 4vw, 3.5rem) clamp(2rem, 5vw, 5rem);
+  border-radius: 8px;
   border: 1px solid rgba(0, 255, 136, 0.15);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(0, 0, 0, 0.5);
-  animation: fadeSlideUp 1.5s ease-out 0.3s both;
+  animation: fadeScaleUp 1s ease-out 0.3s both;
   width: max-content;
-  max-width: 90vw;
+  max-width: 85vw;
+  max-height: 75vh;
+  justify-content: center;
 }
 
-@keyframes fadeSlideUp {
+@keyframes fadeScaleUp {
   0% {
     opacity: 0;
-    transform: translateX(-50%) translateY(30px);
+    transform: translate(-50%, -40%) scale(0.95);
   }
 
   100% {
     opacity: 1;
-    transform: translateX(-50%) translateY(0);
+    transform: translate(-50%, -50%) scale(1);
   }
 }
 
@@ -406,10 +412,10 @@ h1 {
 
 .hero-headline {
   font-family: var(--font-main);
-  font-size: clamp(2.7rem, 5.25vw, 4.8rem);
+  font-size: clamp(2.2rem, 5vw, 4.2rem);
   font-weight: 900;
   letter-spacing: 0.04em;
-  line-height: 1.15;
+  line-height: 1.1;
   color: var(--color-white);
   text-shadow: 0 0 40px rgba(0, 255, 136, 0.1), 0 2px 8px rgba(0, 0, 0, 0.6);
   text-transform: none;
@@ -519,11 +525,15 @@ h1 {
   pointer-events: none;
 }
 
+.hidden:not(.modal) {
+  display: none !important;
+}
+
 .modal-content {
   position: relative;
-  width: 100%;
-  max-width: 420px;
-  padding: 44px;
+  width: 90%;
+  max-width: clamp(320px, 40vw, 480px);
+  padding: clamp(1.5rem, 4vw, 3rem);
   border: 1px solid rgba(0, 255, 136, 0.2);
   background: rgba(10, 10, 10, 0.9);
   box-shadow: 0 0 40px rgba(0, 255, 136, 0.05),
@@ -694,8 +704,8 @@ input:focus {
   }
 
   #hero-cta {
-    bottom: 12vh;
     width: 85vw;
+    padding: 2rem;
   }
 
   .hero-headline {
@@ -803,9 +813,9 @@ input:focus {
   }
 
   #hero-cta {
-    bottom: 16vh;
     width: 92vw;
     gap: 0.7rem;
+    padding: 1.5rem;
   }
 
   .hero-headline {
