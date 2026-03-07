@@ -847,28 +847,6 @@ input:focus {
   .corner-bracket {
     width: 20px;
     height: 20px;
-    top: 10px;
-    bottom: 10px;
-  }
-
-  .top-left-bracket {
-    top: 10px;
-    left: 10px;
-  }
-
-  .top-right-bracket {
-    top: 10px;
-    right: 10px;
-  }
-
-  .bottom-left-bracket {
-    bottom: 10px;
-    left: 10px;
-  }
-
-  .bottom-right-bracket {
-    bottom: 10px;
-    right: 10px;
   }
 
   .badge {
