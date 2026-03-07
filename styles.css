@@ -40,6 +40,7 @@ html,
 body {
   width: 100%;
   height: 100%;
+  height: 100dvh;
 }
 
 body {
@@ -775,8 +776,8 @@ input:focus {
   }
 
   h1 {
-    font-size: clamp(1rem, 5vw, 1.3rem);
-    letter-spacing: 0.15em;
+    font-size: clamp(0.85rem, 4vw, 1.1rem);
+    letter-spacing: 0.12em;
   }
 
   .brand-row {
@@ -814,6 +815,7 @@ input:focus {
 
   #hero-cta {
     width: 92vw;
+    max-width: 95vw;
     gap: 0.7rem;
     padding: 1.5rem;
   }
@@ -944,8 +946,11 @@ input:focus {
   }
 
   #hero-cta {
+    top: auto;
     bottom: 10vh;
+    transform: translateX(-50%);
     width: 94vw;
+    max-width: 96vw;
   }
 
   .corner-bracket {
@@ -957,7 +962,9 @@ input:focus {
 /* Landscape phones — prevent hero overlap with corners */
 @media (max-height: 500px) and (orientation: landscape) {
   #hero-cta {
+    top: auto;
     bottom: 4vh;
+    transform: translateX(-50%);
     gap: 0.4rem;
   }
 
