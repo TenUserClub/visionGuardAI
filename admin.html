@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VisionGuard AI - System Terminal</title>
+  <meta name="description" content="VisionGuard AI Secure Administrator Terminal" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;600;700;900&family=Playfair+Display:wght@600&display=swap"
+    rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body class="admin-body">
+
+  <!-- SVG Noise Filter Definition -->
+  <svg style="display:none;">
+    <defs>
+      <filter id="noise">
+        <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
+        <feColorMatrix type="matrix" values="1 0 0 0 0, 0 1 0 0 0, 0 0 1 0 0, 0 0 0 0.15 0" />
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- ═══════════════ BACKGROUND ═══════════════ -->
+  <div class="video-overlay noise-overlay admin-noise"></div>
+  <div class="video-overlay scanline-overlay admin-scanlines"></div>
+  <div class="video-overlay vignette-overlay"></div>
+
+  <!-- ═══════════════ CORNER BRACKET FRAMES ═══════════════ -->
+  <div class="corner-bracket top-left-bracket"></div>
+  <div class="corner-bracket top-right-bracket"></div>
+  <div class="corner-bracket bottom-left-bracket"></div>
+  <div class="corner-bracket bottom-right-bracket"></div>
+
+  <!-- ═══════════════ CORNER TELEMETRY UI ═══════════════ -->
+  <div class="corner-ui top-left">
+    <div class="brand-row">
+      <span class="rec-dot"
+        style="background: var(--color-accent); box-shadow: 0 0 6px var(--color-accent), 0 0 12px rgba(0, 255, 136, 0.4);"></span>
+      <span class="rec-label" style="color: var(--color-accent);">SYS_LINK</span>
+    </div>
+    <span class="stat-label cam-id">TERMINAL NODE &bull; WAREHOUSE ADMIN</span>
+  </div>
+
+  <div class="corner-ui top-right align-right">
+    <div class="status-badges">
+      <span class="badge badge-active"
+        style="border-color: rgba(255, 255, 255, 0.25); background: rgba(255, 255, 255, 0.05); color: var(--color-text);">IDLE</span>
+      <span class="badge badge-ai" id="admin-ai-badge">AI STANDBY</span>
+    </div>
+  </div>
+
+  <div class="corner-ui bottom-left">
+    <a href="/" class="header-cta-btn" style="text-decoration: none;">&lt; DISCONNECT</a>
+  </div>
+
+  <div class="corner-ui bottom-right align-right">
+    <div class="stat-group">
+      <span class="stat-label" id="admin-timestamp">0000-00-00 00:00:00</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════ MAIN UPLOAD DASHBOARD ═══════════════ -->
+  <div class="admin-container">
+    <div class="admin-header">
+      <h1 class="admin-title">ANALYSIS_TERMINAL</h1>
+      <p class="admin-subtitle">Secure Video Upload & AI Parsing Interface</p>
+    </div>
+
+    <div class="admin-grid">
+      <!-- Upload Section -->
+      <div class="admin-panel upload-panel">
+        <div class="panel-header">
+          <h2>[1] DATA_INPUT</h2>
+        </div>
+
+        <div class="drop-zone" id="drop-zone">
+          <input type="file" id="video-upload" accept="video/mp4,video/x-m4v,video/*,image/gif" hidden />
+          <div class="drop-content">
+            <span class="drop-icon">⇪</span>
+            <h3>INITIALIZE UPLOAD SEQUENCE</h3>
+            <p>Drag & Drop media file or <span class="accent-text">Browse Direct</span></p>
+            <p class="drop-hint">Supported formats: MP4, MOV, GIF (Max 200MB)</p>
+          </div>
+        </div>
+
+        <div class="upload-progress hidden" id="upload-progress">
+          <div class="progress-bar-container">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+          <div class="progress-stats">
+            <span id="progress-text">TRANSFERRING DATA... 0%</span>
+            <span id="progress-size">0 / 0 MB</span>
+          </div>
+        </div>
+
+        <button id="start-analysis-btn" class="submit-btn" style="width: 100%; margin-top: 1rem;" disabled>
+          EXECUTE ANALYSIS PIPELINE
+        </button>
+      </div>
+
+      <!-- Logs / Results Section -->
+      <div class="admin-panel results-panel">
+        <div class="panel-header">
+          <h2>[2] TELEMETRY_FEED</h2>
+        </div>
+
+        <div class="terminal-log" id="terminal-log">
+          <div class="log-entry sys-msg">SYSTEM: AWAITING VIDEO INPUT...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Insights Section (Hidden until complete) -->
+    <div class="admin-panel insights-panel hidden" id="insights-panel">
+      <div class="panel-header" style="justify-content: space-between;">
+        <h2>[+] AI_METRICS_REPORT</h2>
+        <button id="download-report-btn" class="header-cta-btn"
+          style="padding: 0.3rem 1rem; border: 1px solid var(--color-accent); font-size: 0.6rem;">
+          DOWNLOAD PDF
+        </button>
+      </div>
+
+      <div class="insights-grid">
+        <!-- Bag Unloading -->
+        <div class="insight-card">
+          <h3 class="card-title">BAG_UNLOADING</h3>
+          <div class="stat-group vertical">
+            <span class="stat-value accent" id="bag-count">0</span>
+            <span class="stat-label">TOTAL ESTIMATED BAGS</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">CONFIDENCE:</span>
+            <span class="detail-value" id="bag-confidence">N/A</span>
+          </div>
+        </div>
+
+        <!-- Worker Productivity -->
+        <div class="insight-card">
+          <h3 class="card-title">PRODUCTIVITY_INDEX</h3>
+          <div class="stat-group vertical">
+            <span class="stat-value accent" id="worker-count">0</span>
+            <span class="stat-label">OBSERVED WORKERS</span>
+          </div>
+          <div class="worker-list" id="worker-list">
+            <!-- Dynamically populated worker segments -->
+          </div>
+        </div>
+
+        <!-- Suspicious Activity -->
+        <div class="insight-card alert-card" id="theft-card">
+          <h3 class="card-title danger-text">SUSPICIOUS_ACTIVITY</h3>
+          <div class="stat-group vertical" style="align-items: flex-start; margin-bottom: 0.5rem;">
+            <span class="stat-label" id="theft-status">NO INCIDENTS DETECTED</span>
+          </div>
+          <div class="incident-list" id="incident-list">
+            <!-- Dynamically populated theft incidents -->
+          </div>
+        </div>
+      </div>
+
+      <div class="disclaimer-text">
+        <span class="danger-text">WARNING:</span> AI interpretations are probabilistic. Review footage manually before
+        initiating disciplinary or operational actions based on 'Suspicious Activity' reports.
+      </div>
+    </div>
+
+  </div> <!-- End admin-container -->
+
+  <!-- ═══════════════ HIDDEN PRINT GRAPHICAL REPORT ═══════════════ -->
+  <div id="pdf-report-template" class="pdf-report hidden-print-only">
+
+    <!-- PDF Header -->
+    <header class="pdf-header">
+      <div class="pdf-brand">
+        <h2>VisionGuard AI &times; Analytica</h2>
+      </div>
+      <div class="pdf-nav">
+        <span>Site: Warehouse Alpha</span>
+        <span id="pdf-date">Date: N/A</span>
+      </div>
+    </header>
+
+    <!-- Top Analysis Wrapper -->
+    <div class="pdf-top-row">
+      <!-- Overview Card -->
+      <div class="pdf-card overview-card">
+        <div class="pdf-card-header">
+          <h3 class="serif-title">AI Analysis Overview</h3>
+        </div>
+        <div class="overview-body">
+          <div class="big-metric">
+            <span class="metric-val" id="pdf-bag-count">0</span>
+            <span class="metric-label">Bags Tracked</span>
+          </div>
+          <div class="big-metric alert-metric">
+            <span class="metric-val" id="pdf-theft-count">0</span>
+            <span class="metric-label">Incidents</span>
+          </div>
+          <p class="pdf-descriptor">AI successfully parsed the logistical node footage. The confidence threshold
+            guarantees robust tracking accuracy for operational metrics.</p>
+        </div>
+      </div>
+
+      <!-- Worker Chart Card -->
+      <div class="pdf-card chart-card">
+        <div class="pdf-card-header">
+          <h3 class="serif-title">Workforce Productivity Matrix</h3>
+        </div>
+        <div class="chart-container">
+          <canvas id="pdfWorkerChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Incident Wrapper -->
+    <div class="pdf-bottom-row">
+      <div class="pdf-card full-width-card">
+        <div class="pdf-card-tabs">
+          <span class="tab active">Telemetry Events</span>
+          <span class="tab">Raw Data</span>
+        </div>
+        <div class="pdf-card-body" id="pdf-incidents">
+          <!-- Incidents map here -->
+          <p class="pdf-descriptor">No suspicious telemetry incidents to flag in this designated timeframe.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+
+</html>
