@@ -974,6 +974,11 @@ input:focus {
    ═══════════════════════════════════════════════════ */
 
 body.admin-body {
+  background-color: #050505;
+  background-image: url("warehouse-bg.gif");
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
   overflow: hidden;
   height: 100vh;
   height: 100dvh;

@@ -999,6 +999,11 @@ def get_job_or_404(job_id: str, expected_job_type: str) -> dict[str, Any]:
     return job
 
 
+@app.get("/")
+def root() -> dict[str, str]:
+    return {"status": "VisionGuard Warehouse Monitoring API is running. Access /docs for swagger UI."}
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
