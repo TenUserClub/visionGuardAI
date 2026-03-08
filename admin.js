@@ -7,7 +7,7 @@
 const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
 const BACKEND_URL = isLocalhost
   ? "http://127.0.0.1:8000"
-  : "https://cctv-ai-backend.onrender.com"; // UPDATE THIS to your actual Render URL later
+  : "https://cctv-ai-backend-fig8.onrender.com"; // UPDATE THIS to your actual Render URL later
 
 
 const dropZone = document.getElementById("drop-zone");
