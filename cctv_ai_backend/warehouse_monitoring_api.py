@@ -11,6 +11,7 @@ from typing import Any
 
 import requests
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.datastructures import UploadFile as StarletteUploadFile
 
@@ -54,6 +55,14 @@ DEFAULT_RATE_LIMIT_RETRIES = 3
 
 app = FastAPI(title="Warehouse Monitoring API", version="1.0.0")
 
+# Enable CORS for frontend connectivity (Vercel -> Render)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Adjust in production if necessary
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class TwelveLabsAPIError(RuntimeError):
     """Raised when Twelve Labs returns an unexpected response."""
