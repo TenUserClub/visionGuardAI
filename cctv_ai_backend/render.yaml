@@ -1,6 +1,7 @@
 services:
   - type: web
     name: cctv-ai-backend
+    rootDir: cctv_ai_backend
     plan: free
     env: python
     buildCommand: pip install -r requirements.txt
