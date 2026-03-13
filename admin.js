@@ -219,21 +219,36 @@ async function executeAnalysis(videoId, indexId) {
 
 async function pollAnalysisJob(jobId) {
   const url = `${BACKEND_URL}/warehouse-monitoring/analysis-jobs/${jobId}`;
+  let retryCount = 0;
+  const MAX_RETRIES = 5;
 
   while (true) {
-    await delay(5000); // Poll every 5s for analysis (it's slower)
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("Analysis polling failed");
+    await delay(6000); // Poll every 6s for analysis (it's slower)
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        retryCount++;
+        addLog(`[AI JOB] POLL RETRY ${retryCount}/${MAX_RETRIES} (HTTP ${res.status})`, "danger-text");
+        if (retryCount >= MAX_RETRIES) throw new Error(`Analysis polling failed after ${MAX_RETRIES} retries (HTTP ${res.status})`);
+        continue;
+      }
+      retryCount = 0; // reset on success
 
-    const data = await res.json();
+      const data = await res.json();
 
-    if (data.status === "failed") throw new Error(`Analysis Failed: ${data.error?.message || "Unknown error"}`);
+      if (data.status === "failed") throw new Error(`Analysis Failed: ${data.error?.message || "Unknown error"}`);
 
-    if (data.status === "completed") {
-      return data.result;
+      if (data.status === "completed") {
+        return data.result;
+      }
+
+      addLog(`[AI JOB] STATUS: ${data.status.toUpperCase()}`);
+    } catch (err) {
+      if (err.message.includes("Analysis")) throw err; // Re-throw analysis errors
+      retryCount++;
+      addLog(`[AI JOB] NETWORK RETRY ${retryCount}/${MAX_RETRIES}`, "danger-text");
+      if (retryCount >= MAX_RETRIES) throw new Error("Analysis polling failed — network error");
     }
-
-    addLog(`[AI JOB] STATUS: ${data.status.toUpperCase()}`);
   }
 }
 
