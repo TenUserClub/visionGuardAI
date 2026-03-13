@@ -442,7 +442,7 @@ class TwelveLabsWarehouseMonitoringService:
                 video_id=video_id,
                 prompt=self.bag_prompt(),
                 schema=self.bag_schema(),
-                max_tokens=1400,
+                max_tokens=4000,
             ),
             marengo_evidence["bag_unloading"],
         )
@@ -451,7 +451,7 @@ class TwelveLabsWarehouseMonitoringService:
                 video_id=video_id,
                 prompt=self.productivity_prompt(),
                 schema=self.productivity_schema(),
-                max_tokens=2200,
+                max_tokens=6000,
             )
         )
         theft_report = normalize_theft_report(
@@ -459,7 +459,7 @@ class TwelveLabsWarehouseMonitoringService:
                 video_id=video_id,
                 prompt=self.theft_prompt(),
                 schema=self.theft_schema(),
-                max_tokens=1400,
+                max_tokens=4000,
             ),
             marengo_evidence["possible_theft"],
         )
@@ -619,7 +619,15 @@ class TwelveLabsWarehouseMonitoringService:
         )
         payload = response.json()
         if payload.get("finish_reason") == "length":
-            raise TwelveLabsAPIError("Structured analysis was truncated by token limits.")
+            # Try to parse partial data instead of hard-failing.
+            # Twelve Labs may still return a valid (though truncated) JSON object.
+            try:
+                return extract_analysis_payload(payload.get("data"))
+            except Exception:
+                raise TwelveLabsAPIError(
+                    "Structured analysis was truncated and the partial payload could not be parsed. "
+                    "Consider shortening the video clip or simplifying the analysis schema."
+                )
         return extract_analysis_payload(payload.get("data"))
 
     def collect_search_evidence(
