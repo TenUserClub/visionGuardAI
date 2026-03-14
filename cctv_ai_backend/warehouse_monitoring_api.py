@@ -436,33 +436,51 @@ class TwelveLabsWarehouseMonitoringService:
         index_id: str,
         video_id: str,
     ) -> dict[str, Any]:
-        marengo_evidence = self.collect_search_evidence(index_id=index_id, video_id=video_id)
-        bag_report = normalize_bag_report(
-            self.run_structured_analysis(
+        import concurrent.futures
+
+        def _bag():
+            return self.run_structured_analysis(
                 video_id=video_id,
                 prompt=self.bag_prompt(),
                 schema=self.bag_schema(),
                 max_tokens=2048,
-            ),
-            marengo_evidence["bag_unloading"],
-        )
-        productivity_report = normalize_productivity_report(
-            self.run_structured_analysis(
+            )
+
+        def _productivity():
+            return self.run_structured_analysis(
                 video_id=video_id,
                 prompt=self.productivity_prompt(),
                 schema=self.productivity_schema(),
                 max_tokens=2048,
             )
-        )
-        theft_report = normalize_theft_report(
-            self.run_structured_analysis(
+
+        def _theft():
+            return self.run_structured_analysis(
                 video_id=video_id,
                 prompt=self.theft_prompt(),
                 schema=self.theft_schema(),
                 max_tokens=2048,
-            ),
-            marengo_evidence["possible_theft"],
-        )
+            )
+
+        def _marengo():
+            return self.collect_search_evidence(index_id=index_id, video_id=video_id)
+
+        # Run all 4 calls simultaneously
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+            fut_bag = executor.submit(_bag)
+            fut_prod = executor.submit(_productivity)
+            fut_theft = executor.submit(_theft)
+            fut_marengo = executor.submit(_marengo)
+
+            raw_bag = fut_bag.result()
+            raw_prod = fut_prod.result()
+            raw_theft = fut_theft.result()
+            marengo_evidence = fut_marengo.result()
+
+        bag_report = normalize_bag_report(raw_bag, marengo_evidence["bag_unloading"])
+        productivity_report = normalize_productivity_report(raw_prod)
+        theft_report = normalize_theft_report(raw_theft, marengo_evidence["possible_theft"])
+
         return {
             "analysis_generated_at": utc_now(),
             "index_id": index_id,

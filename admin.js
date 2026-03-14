@@ -81,13 +81,27 @@ function handleFileSelection(file) {
 }
 
 
-// ─── CLOCK TELEMETRY ───
+// ─── CLOCK TELEMETRY (local browser time) ───
 function updateClock() {
   const now = new Date();
-  document.getElementById("admin-timestamp").innerText = now.toISOString().replace("T", " ").substring(0, 19);
+  const pad = n => String(n).padStart(2, "0");
+  document.getElementById("admin-timestamp").innerText =
+    `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ` +
+    `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 }
 setInterval(updateClock, 1000);
 updateClock();
+
+// ─── HELPERS ───
+// Convert raw seconds to HH:MM:SS or M:SS
+function secondsToTimestamp(totalSec) {
+  const s = Math.round(totalSec);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const pad = n => String(n).padStart(2, "0");
+  return h > 0 ? `${h}:${pad(m)}:${pad(sec)}` : `${m}:${pad(sec)}`;
+}
 
 
 // ─── API ORCHESTRATION ───
@@ -151,7 +165,7 @@ async function executeUploadAndIndex(file) {
       if (xhr.status === 202) {
         const response = JSON.parse(xhr.responseText);
         addLog(`UPLOAD COMPLETE. JOB_ID: ${response.job_id}`);
-        addLog(`POLLING FOR TWELVE LABS CLOUD INDEXING...`);
+        addLog(`POLLING FOR VisionGuard AI INDEXING...`);
         progressText.innerText = "INDEXING (AWAITING SERVER...)";
 
         try {
@@ -355,20 +369,36 @@ function renderResults(result) {
       pdfIncidents.innerHTML = "";
 
       (td.incidents || []).forEach(inc => {
-        // Dark UI
+        const startTs = secondsToTimestamp(inc.start_sec);
+        const endTs = secondsToTimestamp(inc.end_sec);
+
+        // Dark UI card
         const iDiv = document.createElement("div");
         iDiv.className = "incident-entry";
         iDiv.innerHTML = `
-          <div class="incident-tag">${inc.worker_tag.toUpperCase()} <span>[${inc.start_sec}s - ${inc.end_sec}s]</span></div>
+          <div class="incident-tag">${inc.worker_tag.toUpperCase()} <span>[${startTs} – ${endTs}]</span></div>
           <div class="incident-desc">${inc.item_description || "Unknown Item"}</div>
           <div class="incident-reason">${inc.reason || ""}</div>
         `;
         incList.appendChild(iDiv);
 
-        // PDF entry
+        // PDF entry (with thumbnail if available)
         const printLog = document.createElement("div");
         printLog.className = "print-log-entry danger";
-        printLog.innerHTML = `<strong>${inc.worker_tag.toUpperCase()}</strong> &nbsp;[${inc.start_sec}s – ${inc.end_sec}s] &nbsp;|&nbsp; ${inc.item_description} &nbsp;|&nbsp; <em>${inc.reason}</em>`;
+        const thumbHtml = inc.thumbnail_url
+          ? `<img src="${inc.thumbnail_url}" class="pdf-thumb" alt="evidence thumbnail" />`
+          : "";
+        printLog.innerHTML = `
+          <div class="pdf-incident-row">
+            ${thumbHtml}
+            <div>
+              <strong>${inc.worker_tag.toUpperCase()}</strong>&nbsp;
+              [${startTs} – ${endTs}]&nbsp;|&nbsp;
+              ${inc.item_description}
+              <em style="display:block;margin-top:2px;">${inc.reason}</em>
+            </div>
+          </div>
+        `;
         pdfIncidents.appendChild(printLog);
       });
     } else {

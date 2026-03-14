@@ -1780,4 +1780,28 @@ body.admin-body {
     background: #FEF2F2;
     color: #991B1B;
   }
+
+  /* ── INCIDENT THUMBNAIL ── */
+  .pdf-incident-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .pdf-thumb {
+    width: 100px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid #FECDD3;
+    flex-shrink: 0;
+  }
+
+  .pdf-no-incidents {
+    font-size: 0.8rem;
+    color: #22C55E;
+    font-weight: 600;
+    margin: 0;
+    padding: 10px 0;
+  }
 }
