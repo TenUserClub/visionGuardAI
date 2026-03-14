@@ -442,7 +442,7 @@ class TwelveLabsWarehouseMonitoringService:
                 video_id=video_id,
                 prompt=self.bag_prompt(),
                 schema=self.bag_schema(),
-                max_tokens=4000,
+                max_tokens=2048,
             ),
             marengo_evidence["bag_unloading"],
         )
@@ -451,7 +451,7 @@ class TwelveLabsWarehouseMonitoringService:
                 video_id=video_id,
                 prompt=self.productivity_prompt(),
                 schema=self.productivity_schema(),
-                max_tokens=6000,
+                max_tokens=2048,
             )
         )
         theft_report = normalize_theft_report(
@@ -459,7 +459,7 @@ class TwelveLabsWarehouseMonitoringService:
                 video_id=video_id,
                 prompt=self.theft_prompt(),
                 schema=self.theft_schema(),
-                max_tokens=4000,
+                max_tokens=2048,
             ),
             marengo_evidence["possible_theft"],
         )
@@ -783,7 +783,9 @@ class TwelveLabsWarehouseMonitoringService:
             "Review this warehouse unloading clip and assign anonymous tags like worker_1, worker_2. "
             "A worker is idle only when visibly standing, waiting, or lingering without helping the workflow. "
             "A worker is active when carrying goods, moving inventory, or directly assisting unloading. "
-            "Estimate idle and active time conservatively and provide timestamped idle and active segments."
+            "Estimate idle and active total time in seconds. "
+            "Return at most 5 idle segments and 5 active segments per worker with timestamps. "
+            "Be concise — summarise rather than listing every moment."
         )
 
     @staticmethod
@@ -846,7 +848,6 @@ class TwelveLabsWarehouseMonitoringService:
                         "type": "object",
                         "properties": {
                             "worker_tag": {"type": "string"},
-                            "appearance_summary": {"type": "string"},
                             "idle_seconds_estimate": {"type": "number"},
                             "active_seconds_estimate": {"type": "number"},
                             "idle_segments": {
@@ -876,7 +877,6 @@ class TwelveLabsWarehouseMonitoringService:
                         },
                         "required": [
                             "worker_tag",
-                            "appearance_summary",
                             "idle_seconds_estimate",
                             "active_seconds_estimate",
                             "idle_segments",
