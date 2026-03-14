@@ -119,9 +119,27 @@ startBtn.addEventListener("click", async () => {
   addLog("INITIALIZING INDEX UPLOAD PROTOCOL...");
 
   try {
-    const { video_id, index_id } = await executeUploadAndIndex(currentFile);
-    addLog(`INDEXING COMPLETE. VIDEO ID: ${video_id}`, "sys-success");
-    addLog(`INDEX ID: ${index_id}`, "sys-success");
+    const cacheKey = `vguard_idx_${currentFile.name}_${currentFile.size}`;
+    let cached = null;
+    try {
+      cached = JSON.parse(localStorage.getItem(cacheKey));
+    } catch (e) {}
+
+    let video_id, index_id;
+
+    if (cached && cached.video_id && cached.index_id) {
+       video_id = cached.video_id;
+       index_id = cached.index_id;
+       addLog("MATCHING VIDEO INDEX FOUND IN LOCAL_CACHE.", "sys-success");
+       addLog(`SKIPPING UPLOAD. VIDEO ID: ${video_id}`, "sys-success");
+    } else {
+       const result = await executeUploadAndIndex(currentFile);
+       video_id = result.video_id;
+       index_id = result.index_id;
+       localStorage.setItem(cacheKey, JSON.stringify({ video_id, index_id }));
+       addLog(`INDEXING COMPLETE. VIDEO ID: ${video_id}`, "sys-success");
+       addLog(`INDEX ID: ${index_id}`, "sys-success");
+    }
 
     addLog("DISPATCHING AI ANALYSIS JOB...");
     aiBadge.innerText = "ANALYZING...";
@@ -134,6 +152,7 @@ startBtn.addEventListener("click", async () => {
     renderResults(analysisResult);
 
   } catch (err) {
+
     addLog(`CRITICAL ERROR: ${err.message}`, "danger-text");
     aiBadge.innerText = "LINK FAILED";
     aiBadge.classList.remove("badge-active");
