@@ -468,14 +468,19 @@ class TwelveLabsWarehouseMonitoringService:
         t0 = time.time()
 
         combined_prompt = (
-            "Analyze this warehouse unloading video and return THREE sections:\n"
-            "1. BAG_COUNT: Count sacks/bags unloaded from the truck. Give total and confidence.\n"
-            "2. WORKER_PRODUCTIVITY: Identify workers (worker_1, worker_2...). "
-            "For each, report active_seconds_estimate, idle_seconds_estimate. "
-            "Active = carrying/moving. Idle = standing still. Be concise.\n"
-            "3. THEFT_DETECTION: Identify any worker removing goods outside normal unloading flow. "
-            "Only flag high-confidence incidents. Be conservative."
+            "Analyze this warehouse unloading video and strictly report on the following THREE items in your structured output:\n\n"
+            "1. BAG_UNLOADING:\n"
+            "   - Count only goods or inventory items (sacks, bags, boxes, cartons) that clearly leave the truck.\n"
+            "   - Do NOT count human workers. Be conservative and avoid guessing. If visibility is poor, keep counts low and explain uncertainty in the notes.\n\n"
+            "2. WORKER_PRODUCTIVITY:\n"
+            "   - Assign anonymous tags like worker_1, worker_2.\n"
+            "   - Active = carrying goods, moving inventory, or directly assisting in the unloading work.\n"
+            "   - Idle = visibly standing, waiting, or lingering without assisting the workflow. Estimate active and idle times conservatively.\n\n"
+            "3. THEFT_DETECTION:\n"
+            "   - Be highly conservative. Only report an incident if there is strong, direct visual evidence that a person clearly removes goods from the normal unloading flow and carries them away with no visible return during the clip.\n"
+            "   - Do NOT report if direction of movement is unclear, goods are handed to a co-worker, or if they may still be participating in unloading. If evidence is ambiguous, set theft_detected to false and report zero incidents."
         )
+
 
         combined_schema = {
             "type": "object",

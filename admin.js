@@ -237,6 +237,19 @@ async function pollIndexJob(jobId) {
 }
 
 async function executeAnalysis(videoId, indexId) {
+  const cacheKey = `vguard_analysis_${videoId}`;
+  let cached = null;
+  
+  try {
+    cached = JSON.parse(localStorage.getItem(cacheKey));
+  } catch (e) {}
+
+  if (cached) {
+    addLog("MATCHING ANALYSIS REPORT FOUND IN LOCAL_CACHE.", "sys-success");
+    addLog("SKIPPING AI INFERENCE PIPELINE.", "sys-success");
+    return cached;
+  }
+
   const res = await fetch(`${BACKEND_URL}/warehouse-monitoring/analysis-jobs`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -248,8 +261,17 @@ async function executeAnalysis(videoId, indexId) {
 
   addLog(`ANALYSIS ORCHESTRATED. JOB_ID: ${data.job_id}`);
 
-  return pollAnalysisJob(data.job_id);
+  const result = await pollAnalysisJob(data.job_id);
+  
+  try {
+    localStorage.setItem(cacheKey, JSON.stringify(result));
+  } catch (e) {
+    console.warn("Failed to write analysis to localStorage:", e);
+  }
+  
+  return result;
 }
+
 //test comment
 async function pollAnalysisJob(jobId) {
   const url = `${BACKEND_URL}/warehouse-monitoring/analysis-jobs/${jobId}`;
