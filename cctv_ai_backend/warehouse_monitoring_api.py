@@ -99,10 +99,26 @@ class SearchPreset(BaseModel):
     page_limit: int = 6
 
 
-class InMemoryJobStore:
-    def __init__(self) -> None:
+class FilePersistedJobStore:
+    def __init__(self, persistence_path: str = "data/jobs.json") -> None:
         self._lock = threading.Lock()
-        self._jobs: dict[str, dict[str, Any]] = {}
+        self.path = Path(persistence_path)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._jobs = self._load()
+
+    def _load(self) -> dict[str, dict[str, Any]]:
+        if not self.path.exists():
+            return {}
+        try:
+            return json.loads(self.path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, IOError):
+            return {}
+
+    def _save(self) -> None:
+        try:
+            self.path.write_text(json.dumps(self._jobs, indent=2), encoding="utf-8")
+        except IOError as e:
+            print(f"[STORE ERR] Failed to save jobs: {e}")
 
     def create(self, *, job_type: str, input_payload: dict[str, Any]) -> str:
         job_id = uuid.uuid4().hex
@@ -116,22 +132,24 @@ class InMemoryJobStore:
                 "created_at": timestamp,
                 "updated_at": timestamp,
             }
+            self._save()
         return job_id
 
     def update(self, job_id: str, **changes: Any) -> None:
         with self._lock:
             if job_id not in self._jobs:
-                raise KeyError(job_id)
+                return # Don't raise, just ignore if vanished
             self._jobs[job_id].update(changes)
             self._jobs[job_id]["updated_at"] = utc_now()
+            self._save()
 
     def get(self, job_id: str) -> dict[str, Any] | None:
         with self._lock:
             job = self._jobs.get(job_id)
             return None if job is None else dict(job)
 
+JOB_STORE = FilePersistedJobStore()
 
-JOB_STORE = InMemoryJobStore()
 
 
 def utc_now() -> str:
