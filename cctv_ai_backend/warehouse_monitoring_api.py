@@ -464,61 +464,101 @@ class TwelveLabsWarehouseMonitoringService:
         index_id: str,
         video_id: str,
     ) -> dict[str, Any]:
-        import concurrent.futures
+        print(f"[AI] Starting combined single-shot analysis for video {video_id}...")
+        t0 = time.time()
 
-        print(f"[AI] Starting parallel analysis for video {video_id}...")
+        combined_prompt = (
+            "Analyze this warehouse unloading video and return THREE sections:\n"
+            "1. BAG_COUNT: Count sacks/bags unloaded from the truck. Give total and confidence.\n"
+            "2. WORKER_PRODUCTIVITY: Identify workers (worker_1, worker_2...). "
+            "For each, report active_seconds_estimate, idle_seconds_estimate. "
+            "Active = carrying/moving. Idle = standing still. Be concise.\n"
+            "3. THEFT_DETECTION: Identify any worker removing goods outside normal unloading flow. "
+            "Only flag high-confidence incidents. Be conservative."
+        )
 
-        def _task(name, fn):
-            print(f"[AI Task] [{name}] Starting...")
-            t0 = time.time()
-            try:
-                res = fn()
-                print(f"[AI Task] [{name}] Completed in {time.time() - t0:.1f}s")
-                return res
-            except Exception as e:
-                print(f"[AI Task] [{name}] FAILED after {time.time() - t0:.1f}s: {e}")
-                raise
+        combined_schema = {
+            "type": "object",
+            "properties": {
+                "bag_unloading": {
+                    "type": "object",
+                    "properties": {
+                        "estimated_total_bags_unloaded": {"type": "integer"},
+                        "count_confidence": {"type": "string"},
+                        "notes": {"type": "string"},
+                    },
+                    "required": ["estimated_total_bags_unloaded", "count_confidence", "notes"],
+                },
+                "worker_productivity": {
+                    "type": "object",
+                    "properties": {
+                        "observed_worker_count": {"type": "integer"},
+                        "workers": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "worker_tag": {"type": "string"},
+                                    "active_seconds_estimate": {"type": "number"},
+                                    "idle_seconds_estimate": {"type": "number"},
+                                },
+                                "required": ["worker_tag", "active_seconds_estimate", "idle_seconds_estimate"],
+                            },
+                        },
+                        "summary": {"type": "string"},
+                        "notes": {"type": "string"},
+                    },
+                    "required": ["observed_worker_count", "workers", "summary", "notes"],
+                },
+                "theft_detection": {
+                    "type": "object",
+                    "properties": {
+                        "theft_detected": {"type": "boolean"},
+                        "incidents": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "worker_tag": {"type": "string"},
+                                    "start_sec": {"type": "number"},
+                                    "end_sec": {"type": "number"},
+                                    "item_description": {"type": "string"},
+                                    "reason": {"type": "string"},
+                                    "confidence": {"type": "string"},
+                                },
+                                "required": ["worker_tag", "start_sec", "end_sec",
+                                             "item_description", "reason", "confidence"],
+                            },
+                        },
+                        "notes": {"type": "string"},
+                    },
+                    "required": ["theft_detected", "incidents", "notes"],
+                },
+            },
+            "required": ["bag_unloading", "worker_productivity", "theft_detection"],
+        }
 
-        def _bag():
-            return _task("Bag Unloading", lambda: self.run_structured_analysis(
-                video_id=video_id,
-                prompt=self.bag_prompt(),
-                schema=self.bag_schema(),
-                max_tokens=2048,
-            ))
+        raw = self.run_structured_analysis(
+            video_id=video_id,
+            prompt=combined_prompt,
+            schema=combined_schema,
+            max_tokens=2048,
+        )
+        print(f"[AI] Combined analysis finished in {time.time() - t0:.1f}s. Normalizing...")
 
-        def _productivity():
-            return _task("Productivity", lambda: self.run_structured_analysis(
-                video_id=video_id,
-                prompt=self.productivity_prompt(),
-                schema=self.productivity_schema(),
-                max_tokens=2048,
-            ))
+        # Build normalized reports from the combined response
+        raw_bag = raw.get("bag_unloading", {})
+        raw_prod = raw.get("worker_productivity", {})
+        raw_theft = raw.get("theft_detection", {"theft_detected": False, "incidents": [], "notes": ""})
 
-        def _theft():
-            return _task("Theft Detection", lambda: self.run_structured_analysis(
-                video_id=video_id,
-                prompt=self.theft_prompt(),
-                schema=self.theft_schema(),
-                max_tokens=2048,
-            ))
-
-        def _marengo():
-            return _task("Marengo Search", lambda: self.collect_search_evidence(index_id=index_id, video_id=video_id))
-
-        # Run sequentially for maximum stability on Render free tier.
-        # This also allows us to see exactly which call takes longer.
-        raw_bag = _bag()
-        raw_prod = _productivity()
-        raw_theft = _theft()
-        marengo_evidence = _marengo()
-
-        print(f"[AI] All tasks finished. Normalizing results...")
-        bag_report = normalize_bag_report(raw_bag, marengo_evidence["bag_unloading"])
+        bag_report = normalize_bag_report(raw_bag, [])           # no Marengo evidence
         productivity_report = normalize_productivity_report(raw_prod)
-        theft_report = normalize_theft_report(raw_theft, marengo_evidence["possible_theft"])
+        theft_report = normalize_theft_report(raw_theft, [])     # no Marengo evidence
+        marengo_evidence = {"bag_unloading": [], "worker_idle": [], "possible_theft": []}
 
         print(f"[AI] Analysis for {video_id} is FINALIZED.")
+
+
 
 
 
