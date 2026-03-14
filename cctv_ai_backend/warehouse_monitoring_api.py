@@ -775,8 +775,9 @@ class TwelveLabsWarehouseMonitoringService:
             SearchPreset(
                 name="possible_theft",
                 queries=[
-                    "worker carrying goods away from the normal unloading area",
-                    "person removes inventory from the warehouse workflow without returning",
+                    "person exiting through a door carrying something wrapped or concealed under arm without returning",
+                    "worker removing a bag or sack from the stack and carrying it away from the unloading zone without placing it in the designated area",
+                    "person carrying goods away from the monitored work area and exiting the frame without any coordination with other workers",
                     "possible theft or unauthorized removal of goods",
                 ],
                 search_options=["visual", "audio"],
