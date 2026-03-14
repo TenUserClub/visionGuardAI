@@ -55,14 +55,24 @@ DEFAULT_RATE_LIMIT_RETRIES = 3
 
 app = FastAPI(title="Warehouse Monitoring API", version="1.0.0")
 
-# Enable CORS for frontend connectivity (Vercel -> Render)
+# Shared session for connection pooling
+_SHARED_SESSION = requests.Session()
+_SESSION_LOCK = threading.Lock()
+
+def get_session(api_key: str) -> requests.Session:
+    with _SESSION_LOCK:
+        _SHARED_SESSION.headers.update({"x-api-key": api_key})
+        return _SHARED_SESSION
+
+# Enable CORS for frontend connectivity
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust in production if necessary
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 class TwelveLabsAPIError(RuntimeError):
     """Raised when Twelve Labs returns an unexpected response."""
@@ -392,8 +402,8 @@ class TwelveLabsWarehouseMonitoringService:
         self.poll_interval_seconds = poll_interval_seconds
         self.timeout_seconds = timeout_seconds
         self.rate_limit_retries = rate_limit_retries
-        self.session = requests.Session()
-        self.session.headers.update({"x-api-key": resolved_key})
+        self.session = get_session(resolved_key)
+
 
     def index_video_from_path(
         self,
@@ -438,48 +448,61 @@ class TwelveLabsWarehouseMonitoringService:
     ) -> dict[str, Any]:
         import concurrent.futures
 
+        print(f"[AI] Starting parallel analysis for video {video_id}...")
+
+        def _task(name, fn):
+            print(f"[AI Task] [{name}] Starting...")
+            t0 = time.time()
+            try:
+                res = fn()
+                print(f"[AI Task] [{name}] Completed in {time.time() - t0:.1f}s")
+                return res
+            except Exception as e:
+                print(f"[AI Task] [{name}] FAILED after {time.time() - t0:.1f}s: {e}")
+                raise
+
         def _bag():
-            return self.run_structured_analysis(
+            return _task("Bag Unloading", lambda: self.run_structured_analysis(
                 video_id=video_id,
                 prompt=self.bag_prompt(),
                 schema=self.bag_schema(),
                 max_tokens=2048,
-            )
+            ))
 
         def _productivity():
-            return self.run_structured_analysis(
+            return _task("Productivity", lambda: self.run_structured_analysis(
                 video_id=video_id,
                 prompt=self.productivity_prompt(),
                 schema=self.productivity_schema(),
                 max_tokens=2048,
-            )
+            ))
 
         def _theft():
-            return self.run_structured_analysis(
+            return _task("Theft Detection", lambda: self.run_structured_analysis(
                 video_id=video_id,
                 prompt=self.theft_prompt(),
                 schema=self.theft_schema(),
                 max_tokens=2048,
-            )
+            ))
 
         def _marengo():
-            return self.collect_search_evidence(index_id=index_id, video_id=video_id)
+            return _task("Marengo Search", lambda: self.collect_search_evidence(index_id=index_id, video_id=video_id))
 
-        # Run all 4 calls simultaneously
-        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-            fut_bag = executor.submit(_bag)
-            fut_prod = executor.submit(_productivity)
-            fut_theft = executor.submit(_theft)
-            fut_marengo = executor.submit(_marengo)
+        # Run sequentially for maximum stability on Render free tier.
+        # This also allows us to see exactly which call takes longer.
+        raw_bag = _bag()
+        raw_prod = _productivity()
+        raw_theft = _theft()
+        marengo_evidence = _marengo()
 
-            raw_bag = fut_bag.result()
-            raw_prod = fut_prod.result()
-            raw_theft = fut_theft.result()
-            marengo_evidence = fut_marengo.result()
-
+        print(f"[AI] All tasks finished. Normalizing results...")
         bag_report = normalize_bag_report(raw_bag, marengo_evidence["bag_unloading"])
         productivity_report = normalize_productivity_report(raw_prod)
         theft_report = normalize_theft_report(raw_theft, marengo_evidence["possible_theft"])
+
+        print(f"[AI] Analysis for {video_id} is FINALIZED.")
+
+
 
         return {
             "analysis_generated_at": utc_now(),
@@ -788,36 +811,21 @@ class TwelveLabsWarehouseMonitoringService:
 
     @staticmethod
     def bag_prompt() -> str:
-        return (
-            "Review this warehouse clip and count only goods or inventory items that clearly leave the truck, "
-            "such as sacks, bags, boxes, cartons, or other carried items. Do not count humans. "
-            "Be conservative and avoid guessing. Return chronological events with timestamps in seconds. "
-            "If visibility is poor, keep counts low and explain uncertainty in notes."
-        )
+        return "Count total sacks and bags unloaded from the truck. Provide count and confidence level."
 
     @staticmethod
     def productivity_prompt() -> str:
         return (
-            "Review this warehouse unloading clip and assign anonymous tags like worker_1, worker_2. "
-            "A worker is idle only when visibly standing, waiting, or lingering without helping the workflow. "
-            "A worker is active when carrying goods, moving inventory, or directly assisting unloading. "
-            "Estimate idle and active total time in seconds. "
-            "Return at most 5 idle segments and 5 active segments per worker with timestamps. "
-            "Be concise — summarise rather than listing every moment."
+            "Identify workers (worker_1, worker_2...). "
+            "Report total active/idle time (seconds) per worker. "
+            "Max 5 segments per worker. Be extremely concise."
         )
 
     @staticmethod
     def theft_prompt() -> str:
-        return (
-            "Review this warehouse clip for possible theft or suspicious removal of goods. "
-            "Be highly conservative. Only report an incident when there is strong direct visual evidence that a person "
-            "clearly removes goods from the normal unloading flow and carries them away from the monitored work area "
-            "without any visible return during the clip. "
-            "Do not infer theft from missing paperwork, lack of supervision, unusual behavior, or incomplete context. "
-            "Do not report theft when direction of movement is unclear, when goods may be handed to another worker, "
-            "when the person may still be participating in unloading, or when the item later returns to the work area. "
-            "If the evidence is ambiguous or only moderately suspicious, return theft_detected=false and no incidents."
-        )
+        return "Detect unauthorized inventory removal. List incidents with start_sec/end_sec timestamps and concise logic."
+
+
 
     @staticmethod
     def bag_schema() -> dict[str, Any]:

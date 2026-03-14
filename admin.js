@@ -94,8 +94,9 @@ updateClock();
 
 // ─── HELPERS ───
 // Convert raw seconds to HH:MM:SS or M:SS
-function secondsToTimestamp(totalSec) {
-  const s = Math.round(totalSec);
+function secondsToTimestamp(val) {
+  const s = Math.round(parseFloat(val));
+  if (isNaN(s)) return "0:00";
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
