@@ -86,7 +86,7 @@ function updateClock() {
   const now = new Date();
   const pad = n => String(n).padStart(2, "0");
   document.getElementById("admin-timestamp").innerText =
-    `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ` +
+    `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ` +
     `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 }
 setInterval(updateClock, 1000);
@@ -123,22 +123,22 @@ startBtn.addEventListener("click", async () => {
     let cached = null;
     try {
       cached = JSON.parse(localStorage.getItem(cacheKey));
-    } catch (e) {}
+    } catch (e) { }
 
     let video_id, index_id;
 
     if (cached && cached.video_id && cached.index_id) {
-       video_id = cached.video_id;
-       index_id = cached.index_id;
-       addLog("MATCHING VIDEO INDEX FOUND IN LOCAL_CACHE.", "sys-success");
-       addLog(`SKIPPING UPLOAD. VIDEO ID: ${video_id}`, "sys-success");
+      video_id = cached.video_id;
+      index_id = cached.index_id;
+      addLog("MATCHING VIDEO INDEX FOUND IN LOCAL_CACHE.", "sys-success");
+      addLog(`SKIPPING UPLOAD. VIDEO ID: ${video_id}`, "sys-success");
     } else {
-       const result = await executeUploadAndIndex(currentFile);
-       video_id = result.video_id;
-       index_id = result.index_id;
-       localStorage.setItem(cacheKey, JSON.stringify({ video_id, index_id }));
-       addLog(`INDEXING COMPLETE. VIDEO ID: ${video_id}`, "sys-success");
-       addLog(`INDEX ID: ${index_id}`, "sys-success");
+      const result = await executeUploadAndIndex(currentFile);
+      video_id = result.video_id;
+      index_id = result.index_id;
+      localStorage.setItem(cacheKey, JSON.stringify({ video_id, index_id }));
+      addLog(`INDEXING COMPLETE. VIDEO ID: ${video_id}`, "sys-success");
+      addLog(`INDEX ID: ${index_id}`, "sys-success");
     }
 
     addLog("DISPATCHING AI ANALYSIS JOB...");
@@ -213,36 +213,56 @@ function delay(ms) {
 
 async function pollIndexJob(jobId) {
   const url = `${BACKEND_URL}/warehouse-monitoring/index-jobs/${jobId}`;
+  const TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes total deadline
+  const start = Date.now();
+  let retryCount = 0;
+  const MAX_RETRIES = 5;
 
   while (true) {
-    await delay(3000); // Poll every 3 seconds
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("Index polling failed");
-
-    const data = await res.json();
-
-    if (data.status === "failed") throw new Error(`Indexing Failed: ${data.error?.message || "Unknown error"}`);
-
-    if (data.status === "completed") {
-      if (data.result.ready_for_search && data.result.completion_basis === "indexed_asset_ready") {
-        return {
-          index_id: data.result.index_id,
-          video_id: data.result.video_id
-        };
-      }
+    if (Date.now() - start > TIMEOUT_MS) {
+      throw new Error("Index job timed out after 10 minutes of polling.");
     }
-    // Still running/queued
-    addLog(`[INDEX JOB] STATUS: ${data.status.toUpperCase()}`);
+    await delay(3000); // Poll every 3 seconds
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        retryCount++;
+        addLog(`[INDEX JOB] POLL RETRY ${retryCount}/${MAX_RETRIES} (HTTP ${res.status})`, "danger-text");
+        if (retryCount >= MAX_RETRIES) throw new Error(`Index polling failed after ${MAX_RETRIES} retries (HTTP ${res.status})`);
+        continue;
+      }
+      retryCount = 0;
+
+      const data = await res.json();
+
+      if (data.status === "failed") throw new Error(`Indexing Failed: ${data.error?.message || "Unknown error"}`);
+
+      if (data.status === "completed") {
+        if (data.result.ready_for_search && data.result.completion_basis === "indexed_asset_ready") {
+          return {
+            index_id: data.result.index_id,
+            video_id: data.result.video_id
+          };
+        }
+      }
+      // Still running/queued
+      addLog(`[INDEX JOB] STATUS: ${data.status.toUpperCase()}`);
+    } catch (err) {
+      if (err.message.includes("Indexing") || err.message.includes("timed out") || err.message.includes("polling failed")) throw err;
+      retryCount++;
+      addLog(`[INDEX JOB] NETWORK RETRY ${retryCount}/${MAX_RETRIES}`, "danger-text");
+      if (retryCount >= MAX_RETRIES) throw new Error("Index polling failed — network error");
+    }
   }
 }
 
 async function executeAnalysis(videoId, indexId) {
   const cacheKey = `vguard_analysis_${videoId}`;
   let cached = null;
-  
+
   try {
     cached = JSON.parse(localStorage.getItem(cacheKey));
-  } catch (e) {}
+  } catch (e) { }
 
   if (cached) {
     addLog("MATCHING ANALYSIS REPORT FOUND IN LOCAL_CACHE.", "sys-success");
@@ -262,23 +282,27 @@ async function executeAnalysis(videoId, indexId) {
   addLog(`ANALYSIS ORCHESTRATED. JOB_ID: ${data.job_id}`);
 
   const result = await pollAnalysisJob(data.job_id);
-  
+
   try {
     localStorage.setItem(cacheKey, JSON.stringify(result));
   } catch (e) {
     console.warn("Failed to write analysis to localStorage:", e);
   }
-  
+
   return result;
 }
 
-//test comment
 async function pollAnalysisJob(jobId) {
   const url = `${BACKEND_URL}/warehouse-monitoring/analysis-jobs/${jobId}`;
+  const TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes total deadline
+  const start = Date.now();
   let retryCount = 0;
   const MAX_RETRIES = 5;
 
   while (true) {
+    if (Date.now() - start > TIMEOUT_MS) {
+      throw new Error("Analysis job timed out after 10 minutes of polling.");
+    }
     await delay(6000); // Poll every 6s for analysis (it's slower)
     try {
       const res = await fetch(url);
@@ -300,7 +324,7 @@ async function pollAnalysisJob(jobId) {
 
       addLog(`[AI JOB] STATUS: ${data.status.toUpperCase()}`);
     } catch (err) {
-      if (err.message.includes("Analysis")) throw err; // Re-throw analysis errors
+      if (err.message.includes("Analysis") || err.message.includes("timed out")) throw err;
       retryCount++;
       addLog(`[AI JOB] NETWORK RETRY ${retryCount}/${MAX_RETRIES}`, "danger-text");
       if (retryCount >= MAX_RETRIES) throw new Error("Analysis polling failed — network error");

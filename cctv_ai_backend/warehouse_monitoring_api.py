@@ -55,14 +55,12 @@ DEFAULT_RATE_LIMIT_RETRIES = 3
 
 app = FastAPI(title="Warehouse Monitoring API", version="1.0.0")
 
-# Shared session for connection pooling
-_SHARED_SESSION = requests.Session()
-_SESSION_LOCK = threading.Lock()
-
-def get_session(api_key: str) -> requests.Session:
-    with _SESSION_LOCK:
-        _SHARED_SESSION.headers.update({"x-api-key": api_key})
-        return _SHARED_SESSION
+# Create a new session per service instance — requests.Session is NOT thread-safe,
+# and each background job thread needs its own session to avoid socket corruption.
+def _make_session(api_key: str) -> requests.Session:
+    session = requests.Session()
+    session.headers.update({"x-api-key": api_key})
+    return session
 
 # Enable CORS for frontend connectivity
 app.add_middleware(
@@ -175,8 +173,9 @@ def ensure_upload_directory() -> None:
 
 
 def start_background_job(target: Any, **kwargs: Any) -> None:
-    worker = threading.Thread(target=target, kwargs=kwargs, daemon=True)
-    worker.start()
+    # FastAPI BackgroundTasks already runs this after the HTTP response is sent.
+    # Wrapping in a daemon Thread is unnecessary and hides errors; just call directly.
+    target(**kwargs)
 
 
 def build_service() -> "TwelveLabsWarehouseMonitoringService":
@@ -403,7 +402,8 @@ class TwelveLabsWarehouseMonitoringService:
         api_key: str | None = None,
         base_url: str = BASE_URL,
         poll_interval_seconds: int = 5,
-        timeout_seconds: int = 120,
+        timeout_seconds: int = 600,  # /analyze can take several minutes; 120 s was too short
+        poll_timeout_seconds: int = 900,  # max wall-clock time for asset/indexed-asset polling
         rate_limit_retries: int = DEFAULT_RATE_LIMIT_RETRIES,
     ) -> None:
         resolved_key = (
@@ -419,8 +419,9 @@ class TwelveLabsWarehouseMonitoringService:
         self.base_url = base_url.rstrip("/")
         self.poll_interval_seconds = poll_interval_seconds
         self.timeout_seconds = timeout_seconds
+        self.poll_timeout_seconds = poll_timeout_seconds
         self.rate_limit_retries = rate_limit_retries
-        self.session = get_session(resolved_key)
+        self.session = _make_session(resolved_key)
 
 
     def index_video_from_path(
@@ -627,6 +628,7 @@ class TwelveLabsWarehouseMonitoringService:
         return payload
 
     def wait_for_asset(self, *, asset_id: str) -> dict[str, Any]:
+        deadline = time.monotonic() + self.poll_timeout_seconds
         while True:
             response = self.request("GET", f"/assets/{asset_id}", expected_codes={200})
             payload = response.json()
@@ -635,6 +637,11 @@ class TwelveLabsWarehouseMonitoringService:
                 return payload
             if status == "failed":
                 raise TwelveLabsAPIError(f"Asset upload failed for asset '{asset_id}'.")
+            if time.monotonic() >= deadline:
+                raise TwelveLabsAPIError(
+                    f"Timed out waiting for asset '{asset_id}' to become ready "
+                    f"after {self.poll_timeout_seconds}s (last status: '{status}')."
+                )
             time.sleep(self.poll_interval_seconds)
 
     def create_indexed_asset(self, *, index_id: str, asset_id: str) -> dict[str, Any]:
@@ -652,6 +659,7 @@ class TwelveLabsWarehouseMonitoringService:
         return payload
 
     def wait_for_indexed_asset(self, *, index_id: str, indexed_asset_id: str) -> dict[str, Any]:
+        deadline = time.monotonic() + self.poll_timeout_seconds
         while True:
             response = self.request(
                 "GET",
@@ -665,6 +673,11 @@ class TwelveLabsWarehouseMonitoringService:
             if status == "failed":
                 raise TwelveLabsAPIError(
                     f"Indexing failed for indexed asset '{indexed_asset_id}'."
+                )
+            if time.monotonic() >= deadline:
+                raise TwelveLabsAPIError(
+                    f"Timed out waiting for indexed asset '{indexed_asset_id}' to become ready "
+                    f"after {self.poll_timeout_seconds}s (last status: '{status}')."
                 )
             time.sleep(self.poll_interval_seconds)
 
@@ -1211,6 +1224,6 @@ if __name__ == "__main__":
     uvicorn.run(
         "warehouse_monitoring_api:app",
         host=os.getenv("WAREHOUSE_API_HOST", "127.0.0.1"),
-        port=int(os.getenv("WAREHOUSE_API_PORT", "8080")),
+        port=int(os.getenv("WAREHOUSE_API_PORT", "8000")),
         reload=False,
     )
