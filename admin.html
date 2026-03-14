@@ -70,10 +70,11 @@
   <div class="admin-container">
     <div class="admin-header">
       <h1 class="admin-title">ANALYSIS_TERMINAL</h1>
-      <p class="admin-subtitle">Secure Video Upload & AI Parsing Interface</p>
+      <p class="admin-subtitle">Secure Video Upload &amp; AI Parsing Interface</p>
     </div>
 
-    <div class="admin-grid">
+    <!-- Upload + Telemetry Grid (shown during upload phase) -->
+    <div class="admin-grid" id="upload-grid">
       <!-- Upload Section -->
       <div class="admin-panel upload-panel">
         <div class="panel-header">
@@ -85,7 +86,7 @@
           <div class="drop-content">
             <span class="drop-icon">⇪</span>
             <h3>INITIALIZE UPLOAD SEQUENCE</h3>
-            <p>Drag & Drop media file or <span class="accent-text">Browse Direct</span></p>
+            <p>Drag &amp; Drop media file or <span class="accent-text">Browse Direct</span></p>
             <p class="drop-hint">Supported formats: MP4, MOV, GIF (Max 200MB)</p>
           </div>
         </div>
@@ -100,7 +101,7 @@
           </div>
         </div>
 
-        <button id="start-analysis-btn" class="submit-btn" style="width: 100%; margin-top: 1rem;" disabled>
+        <button id="start-analysis-btn" class="submit-btn" style="width: 100%; margin-top: 0.75rem;" disabled>
           EXECUTE ANALYSIS PIPELINE
         </button>
       </div>
@@ -119,11 +120,11 @@
 
     <!-- AI Insights Section (Hidden until complete) -->
     <div class="admin-panel insights-panel hidden" id="insights-panel">
-      <div class="panel-header" style="justify-content: space-between;">
-        <h2>[+] AI_METRICS_REPORT</h2>
+      <div class="panel-header" style="display:flex; justify-content: space-between; align-items: center;">
+        <h2 style="margin-bottom:0;">[+] AI_METRICS_REPORT</h2>
         <button id="download-report-btn" class="header-cta-btn"
-          style="padding: 0.3rem 1rem; border: 1px solid var(--color-accent); font-size: 0.6rem;">
-          DOWNLOAD PDF
+          style="padding: 0.3rem 1rem; border: 1px solid var(--color-accent); font-size: 0.6rem; flex-shrink: 0;">
+          ↓ DOWNLOAD PDF
         </button>
       </div>
 
@@ -138,6 +139,10 @@
           <div class="detail-row">
             <span class="detail-label">CONFIDENCE:</span>
             <span class="detail-value" id="bag-confidence">N/A</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">ANALYSIS TIME:</span>
+            <span class="detail-value" id="analysis-time">N/A</span>
           </div>
         </div>
 
@@ -179,59 +184,88 @@
     <!-- PDF Header -->
     <header class="pdf-header">
       <div class="pdf-brand">
-        <h2>VisionGuard AI &times; Analytica</h2>
+        <div class="pdf-logo-mark">VG</div>
+        <div>
+          <h1 class="pdf-brand-title">VisionGuard AI</h1>
+          <p class="pdf-brand-sub">Warehouse Intelligence Report</p>
+        </div>
       </div>
-      <div class="pdf-nav">
-        <span>Site: Warehouse Alpha</span>
-        <span id="pdf-date">Date: N/A</span>
+      <div class="pdf-header-right">
+        <div class="pdf-meta-row"><span class="pdf-meta-label">Site</span><span class="pdf-meta-val">Warehouse Alpha</span></div>
+        <div class="pdf-meta-row"><span class="pdf-meta-label">Generated</span><span class="pdf-meta-val" id="pdf-date">—</span></div>
+        <div class="pdf-meta-row"><span class="pdf-meta-label">Status</span><span class="pdf-meta-val pdf-status-ok">ANALYSIS COMPLETE</span></div>
       </div>
     </header>
 
-    <!-- Top Analysis Wrapper -->
-    <div class="pdf-top-row">
-      <!-- Overview Card -->
-      <div class="pdf-card overview-card">
-        <div class="pdf-card-header">
-          <h3 class="serif-title">AI Analysis Overview</h3>
-        </div>
-        <div class="overview-body">
-          <div class="big-metric">
-            <span class="metric-val" id="pdf-bag-count">0</span>
-            <span class="metric-label">Bags Tracked</span>
-          </div>
-          <div class="big-metric alert-metric">
-            <span class="metric-val" id="pdf-theft-count">0</span>
-            <span class="metric-label">Incidents</span>
-          </div>
-          <p class="pdf-descriptor">AI successfully parsed the logistical node footage. The confidence threshold
-            guarantees robust tracking accuracy for operational metrics.</p>
-        </div>
+    <!-- KPI Row -->
+    <div class="pdf-kpi-row">
+      <div class="pdf-kpi-card">
+        <span class="pdf-kpi-value" id="pdf-bag-count">0</span>
+        <span class="pdf-kpi-label">Bags Unloaded</span>
+        <span class="pdf-kpi-sub" id="pdf-bag-confidence">Confidence: —</span>
       </div>
+      <div class="pdf-kpi-card">
+        <span class="pdf-kpi-value" id="pdf-worker-count">0</span>
+        <span class="pdf-kpi-label">Workers Observed</span>
+        <span class="pdf-kpi-sub">Via AI tracking</span>
+      </div>
+      <div class="pdf-kpi-card">
+        <span class="pdf-kpi-value" id="pdf-avg-productivity">—%</span>
+        <span class="pdf-kpi-label">Avg. Productivity</span>
+        <span class="pdf-kpi-sub">Active / Total time</span>
+      </div>
+      <div class="pdf-kpi-card pdf-kpi-alert" id="pdf-incident-kpi">
+        <span class="pdf-kpi-value" id="pdf-theft-count">0</span>
+        <span class="pdf-kpi-label">Suspicious Incidents</span>
+        <span class="pdf-kpi-sub">High-confidence only</span>
+      </div>
+    </div>
 
-      <!-- Worker Chart Card -->
-      <div class="pdf-card chart-card">
-        <div class="pdf-card-header">
-          <h3 class="serif-title">Workforce Productivity Matrix</h3>
-        </div>
-        <div class="chart-container">
+    <!-- Main Content Row -->
+    <div class="pdf-main-row">
+      <!-- Workforce Chart -->
+      <div class="pdf-section-card pdf-chart-section">
+        <h2 class="pdf-section-title">Workforce Productivity Matrix</h2>
+        <p class="pdf-section-desc">Active vs Idle time breakdown per observed worker, based on AI video analysis.</p>
+        <div class="pdf-chart-wrap">
           <canvas id="pdfWorkerChart"></canvas>
         </div>
       </div>
+
+      <!-- Worker Breakdown Table -->
+      <div class="pdf-section-card pdf-table-section">
+        <h2 class="pdf-section-title">Worker Breakdown</h2>
+        <table class="pdf-worker-table" id="pdf-worker-table">
+          <thead>
+            <tr>
+              <th>Worker</th>
+              <th>Active (s)</th>
+              <th>Idle (s)</th>
+              <th>Score</th>
+            </tr>
+          </thead>
+          <tbody id="pdf-worker-tbody">
+            <!-- Dynamically injected -->
+          </tbody>
+        </table>
+      </div>
     </div>
 
-    <!-- Bottom Incident Wrapper -->
-    <div class="pdf-bottom-row">
-      <div class="pdf-card full-width-card">
-        <div class="pdf-card-tabs">
-          <span class="tab active">Telemetry Events</span>
-          <span class="tab">Raw Data</span>
-        </div>
-        <div class="pdf-card-body" id="pdf-incidents">
-          <!-- Incidents map here -->
-          <p class="pdf-descriptor">No suspicious telemetry incidents to flag in this designated timeframe.</p>
+    <!-- Incidents Section -->
+    <div class="pdf-full-section">
+      <div class="pdf-section-card">
+        <h2 class="pdf-section-title">Security Telemetry — Suspicious Activity</h2>
+        <div id="pdf-incidents">
+          <p class="pdf-no-incidents">✓ No high-confidence suspicious activity detected in this footage.</p>
         </div>
       </div>
     </div>
+
+    <!-- Footer -->
+    <footer class="pdf-footer">
+      <p>Generated by VisionGuard AI &times; Analytica &nbsp;|&nbsp; Powered by Twelve Labs Pegasus &amp; Marengo Models</p>
+      <p class="pdf-disclaimer">AI outputs are probabilistic estimates. Always verify with manual review before taking action.</p>
+    </footer>
 
   </div>
 

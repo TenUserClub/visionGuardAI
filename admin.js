@@ -255,105 +255,131 @@ async function pollAnalysisJob(jobId) {
 // ─── RENDERING RESULTS ───
 
 function renderResults(result) {
-  // Hide the initial panels to make room for full-page analytics
-  document.querySelector(".upload-panel").style.display = "none";
-  document.querySelector(".results-panel").style.display = "none";
-
-  // Show the final dark UI insight board
+  // Hide upload grid, show insights panel
+  document.getElementById("upload-grid").style.display = "none";
   insightsPanel.classList.remove("hidden");
 
-  // Sync date to PDF
-  document.getElementById("pdf-date").innerText = `Date: ${new Date().toLocaleDateString()}`;
+  // ── PDF metadata ──
+  const now = new Date();
+  document.getElementById("pdf-date").innerText = now.toLocaleDateString("en-GB", {
+    day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit"
+  });
+  document.getElementById("analysis-time").innerText = now.toLocaleTimeString();
 
-  // 1. Bag Unloading
-  if (result.bag_unloading) {
-    document.getElementById("bag-count").innerText = result.bag_unloading.estimated_total_bags_unloaded || 0;
-    document.getElementById("bag-confidence").innerText = (result.bag_unloading.count_confidence || "N/A").toUpperCase();
-  }
+  // ── 1. Bag Unloading ──
+  const bagCount = result.bag_unloading?.estimated_total_bags_unloaded ?? 0;
+  const bagConf = (result.bag_unloading?.count_confidence ?? "N/A").toUpperCase();
+  document.getElementById("bag-count").innerText = bagCount;
+  document.getElementById("bag-confidence").innerText = bagConf;
+  // PDF KPIs
+  document.getElementById("pdf-bag-count").innerText = bagCount;
+  document.getElementById("pdf-bag-confidence").innerText = `Confidence: ${bagConf}`;
 
-  // 2. Productivity
-  if (result.worker_productivity) {
-    document.getElementById("worker-count").innerText = result.worker_productivity.observed_worker_count || 0;
+  // ── 2. Productivity ──
+  const wp = result.worker_productivity;
+  if (wp) {
+    const workerCount = wp.observed_worker_count ?? 0;
+    document.getElementById("worker-count").innerText = workerCount;
+    document.getElementById("pdf-worker-count").innerText = workerCount;
 
     const workerList = document.getElementById("worker-list");
+    const pdfTbody = document.getElementById("pdf-worker-tbody");
     workerList.innerHTML = "";
+    pdfTbody.innerHTML = "";
 
-    // Arrays for Chart.js PDF plotting
-    const labels = [];
-    const activeData = [];
-    const idleData = [];
+    const labels = [], activeData = [], idleData = [];
+    let totalScore = 0;
 
-    (result.worker_productivity.workers || []).forEach(worker => {
+    (wp.workers || []).forEach(worker => {
+      const score = (worker.productivity_score * 100).toFixed(1);
+      totalScore += worker.productivity_score;
+
+      // Dark UI card
       const wCard = document.createElement("div");
       wCard.className = "worker-entry";
       wCard.innerHTML = `
         <div class="worker-header">
            <strong>${worker.worker_tag.toUpperCase()}</strong>
-           <span>${worker.productivity_score * 100}% SCORE</span>
+           <span>${score}% SCORE</span>
         </div>
         <div class="worker-bar">
-          <div class="active-bar" style="width: ${worker.productivity_score * 100}%"></div>
+          <div class="active-bar" style="width: ${score}%"></div>
         </div>
-        <div style="font-size: 0.6rem; color: var(--color-faint); margin-top: 4px;">
+        <div style="font-size: 0.6rem; color: var(--color-faint); margin-top: 3px;">
            ACTIVE: ${worker.active_seconds_estimate}s | IDLE: ${worker.idle_seconds_estimate}s
         </div>
       `;
       workerList.appendChild(wCard);
 
-      // Push to chart arrays
+      // PDF table row
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${worker.worker_tag.toUpperCase()}</td>
+        <td>${worker.active_seconds_estimate}s</td>
+        <td>${worker.idle_seconds_estimate}s</td>
+        <td class="pdf-score-cell">${score}%</td>
+      `;
+      pdfTbody.appendChild(tr);
+
       labels.push(worker.worker_tag.toUpperCase());
       activeData.push(worker.active_seconds_estimate);
       idleData.push(worker.idle_seconds_estimate);
     });
 
-    // Generate PDF Chart
+    // Avg productivity KPI
+    const avg = wp.workers?.length ? ((totalScore / wp.workers.length) * 100).toFixed(1) : "—";
+    document.getElementById("pdf-avg-productivity").innerText = `${avg}%`;
+
     renderPdfChart(labels, activeData, idleData);
   }
 
-  // 3. Theft/Suspicious Activity
-  if (result.theft_detection) {
+  // ── 3. Theft / Suspicious Activity ──
+  const td = result.theft_detection;
+  if (td) {
     const theftCard = document.getElementById("theft-card");
     const theftStatus = document.getElementById("theft-status");
     const incList = document.getElementById("incident-list");
+    const pdfIncidents = document.getElementById("pdf-incidents");
+    const incidentKpi = document.getElementById("pdf-incident-kpi");
     incList.innerHTML = "";
 
-    if (result.theft_detection.theft_detected) {
+    if (td.theft_detected) {
       theftCard.style.borderColor = "var(--color-danger)";
       theftCard.style.boxShadow = "inset 0 0 20px rgba(255, 51, 51, 0.2)";
       theftStatus.innerText = "INCIDENTS DETECTED";
       theftStatus.classList.add("danger-text");
 
-      document.getElementById("pdf-theft-count").innerText = (result.theft_detection.incidents || []).length;
-      document.getElementById("pdf-theft-count").style.color = "#EF4444";
+      const count = (td.incidents || []).length;
+      document.getElementById("pdf-theft-count").innerText = count;
+      incidentKpi.classList.add("pdf-kpi-alert");
+      pdfIncidents.innerHTML = "";
 
-      (result.theft_detection.incidents || []).forEach(inc => {
+      (td.incidents || []).forEach(inc => {
+        // Dark UI
         const iDiv = document.createElement("div");
         iDiv.className = "incident-entry";
         iDiv.innerHTML = `
           <div class="incident-tag">${inc.worker_tag.toUpperCase()} <span>[${inc.start_sec}s - ${inc.end_sec}s]</span></div>
-          <div class="incident-desc">${inc.item_description || 'Unknown Item'}</div>
-          <div class="incident-reason">${inc.reason || ''}</div>
+          <div class="incident-desc">${inc.item_description || "Unknown Item"}</div>
+          <div class="incident-reason">${inc.reason || ""}</div>
         `;
         incList.appendChild(iDiv);
 
-        // Push duplicate to hidden print DOM
+        // PDF entry
         const printLog = document.createElement("div");
         printLog.className = "print-log-entry danger";
-        printLog.innerHTML = `<strong>${inc.worker_tag.toUpperCase()}</strong> [${inc.start_sec}s - ${inc.end_sec}s] | ${inc.item_description} | <em>Reason: ${inc.reason}</em>`;
-        document.getElementById("pdf-incidents").appendChild(printLog);
+        printLog.innerHTML = `<strong>${inc.worker_tag.toUpperCase()}</strong> &nbsp;[${inc.start_sec}s – ${inc.end_sec}s] &nbsp;|&nbsp; ${inc.item_description} &nbsp;|&nbsp; <em>${inc.reason}</em>`;
+        pdfIncidents.appendChild(printLog);
       });
-      // Remove placeholder text from pdf list
-      const placeholder = document.getElementById("pdf-incidents").querySelector("p");
-      if (placeholder) placeholder.remove();
-
     } else {
       theftStatus.innerText = "NO SUSPICIOUS ACTIVITY";
       theftStatus.style.color = "var(--color-accent)";
+      document.getElementById("pdf-theft-count").innerText = "0";
     }
   }
 }
 
-// ─── PDF REPORT GENERATION HANDLERS ───
+// ─── PDF CHART ───
 
 function renderPdfChart(labels, activeData, idleData) {
   const ctx = document.getElementById("pdfWorkerChart").getContext("2d");
@@ -363,42 +389,45 @@ function renderPdfChart(labels, activeData, idleData) {
   }
 
   window.pdfChart = new Chart(ctx, {
-    type: 'bar',
+    type: "bar",
     data: {
-      labels: labels,
+      labels,
       datasets: [
         {
-          label: 'Active (seconds)',
+          label: "Active (s)",
           data: activeData,
-          backgroundColor: '#0EA5E9', // Teal
+          backgroundColor: "#00C875",
           borderRadius: 4,
-          barPercentage: 0.6,
+          barPercentage: 0.55,
         },
         {
-          label: 'Idle (seconds)',
+          label: "Idle (s)",
           data: idleData,
-          backgroundColor: '#FB7185', // Soft Coral
+          backgroundColor: "#FB7185",
           borderRadius: 4,
-          barPercentage: 0.6,
+          barPercentage: 0.55,
         }
       ]
     },
     options: {
-      indexAxis: 'y', // Horizontal Layout like Cloud Dentistry
+      indexAxis: "y",
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { position: 'bottom', labels: { font: { family: 'Inter', size: 12 } } }
+        legend: {
+          position: "bottom",
+          labels: { font: { family: "Inter", size: 11 }, padding: 12 }
+        }
       },
       scales: {
-        x: { stacked: true, grid: { display: false } },
-        y: { stacked: true, grid: { color: '#F1F5F9' } }
+        x: { stacked: false, grid: { color: "#F1F5F9" }, ticks: { font: { size: 10 } } },
+        y: { grid: { display: false }, ticks: { font: { family: "Inter", size: 11 } } }
       }
     }
   });
 }
 
-// Print trigger from Download Button
+// ─── DOWNLOAD PDF ───
 document.getElementById("download-report-btn").addEventListener("click", () => {
   window.print();
 });

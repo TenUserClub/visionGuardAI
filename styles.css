@@ -1002,8 +1002,11 @@ body.admin-body {
   width: 90%;
   max-width: 1200px;
   margin: 0;
-  padding: 0 0.5rem 1rem 0.5rem;
-  overflow-y: auto;
+  padding: 0 0.5rem;
+  /* No overflow — everything must fit in viewport */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .admin-container::-webkit-scrollbar {
@@ -1038,8 +1041,9 @@ body.admin-body {
 .admin-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  flex-shrink: 0;
 }
 
 @media (max-width: 900px) {
@@ -1052,7 +1056,7 @@ body.admin-body {
   background: rgba(10, 10, 10, 0.7);
   border: 1px solid rgba(0, 255, 136, 0.2);
   border-radius: 4px;
-  padding: 1rem;
+  padding: 0.75rem 1rem;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -1188,17 +1192,24 @@ body.admin-body {
 }
 
 /* Insights Section */
+.insights-panel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
 .insights-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1.5rem;
-  margin-top: 1rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-top: 0.5rem;
 }
 
 .insight-card {
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 1.5rem;
+  padding: 0.75rem;
 }
 
 .alert-card {
@@ -1208,17 +1219,17 @@ body.admin-body {
 
 .card-title {
   font-family: var(--font-mono);
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   color: var(--color-text);
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
   letter-spacing: 0.1em;
 }
 
 .stat-group.vertical {
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.2rem;
-  margin-bottom: 1rem;
+  gap: 0.1rem;
+  margin-bottom: 0.5rem;
 }
 
 .detail-row {
@@ -1242,8 +1253,8 @@ body.admin-body {
 
 /* Dynamic Content Rules */
 .worker-entry {
-  margin-bottom: 1rem;
-  padding-bottom: 1rem;
+  margin-bottom: 0.4rem;
+  padding-bottom: 0.4rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -1303,13 +1314,295 @@ body.admin-body {
   color: var(--color-faint);
   text-transform: none;
   text-align: center;
-  margin-top: 2rem;
+  margin-top: 0.75rem;
 }
 
 /* ═══════════════════════════════════════════════════
    PREMIUM REPORT GENERATION (PRINT STYLES)
    Inspired by Reference Analytics Dashboards
    ═══════════════════════════════════════════════════ */
+
+.hidden-print-only {
+  display: none;
+}
+
+@media print {
+  @page {
+    margin: 0;
+    size: portrait;
+  }
+
+  /* Hide the entire dark terminal UI */
+  .admin-container,
+  .corner-bracket,
+  .corner-ui,
+  .admin-noise,
+  .admin-scanlines,
+  .vignette-overlay {
+    display: none !important;
+  }
+
+  body.admin-body {
+    background: #F7F8FA !important;
+    color: #0F172A !important;
+    overflow: visible !important;
+    height: auto !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .hidden-print-only {
+    display: block !important;
+  }
+
+  /* ── REPORT SHELL ── */
+  .pdf-report {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 14mm 16mm 12mm;
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+    color: #1E293B;
+    background: #F7F8FA;
+  }
+
+  /* ── HEADER ── */
+  .pdf-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #00C875;
+    margin-bottom: 14px;
+  }
+
+  .pdf-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .pdf-logo-mark {
+    width: 40px;
+    height: 40px;
+    background: #00C875;
+    color: #000;
+    font-family: 'Inter', sans-serif;
+    font-weight: 900;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    letter-spacing: -0.05em;
+  }
+
+  .pdf-brand-title {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #0F172A;
+    margin: 0;
+    letter-spacing: -0.03em;
+  }
+
+  .pdf-brand-sub {
+    font-size: 0.75rem;
+    color: #64748B;
+    margin: 0;
+  }
+
+  .pdf-header-right {
+    text-align: right;
+  }
+
+  .pdf-meta-row {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    font-size: 0.75rem;
+    margin-bottom: 2px;
+  }
+
+  .pdf-meta-label {
+    color: #94A3B8;
+    font-weight: 600;
+  }
+
+  .pdf-meta-val {
+    color: #1E293B;
+    font-weight: 500;
+  }
+
+  .pdf-status-ok {
+    color: #00C875;
+    font-weight: 700;
+  }
+
+  /* ── KPI ROW ── */
+  .pdf-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .pdf-kpi-card {
+    background: #FFFFFF;
+    border-radius: 10px;
+    border: 1px solid #E2E8F0;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .pdf-kpi-card.pdf-kpi-alert {
+    border-color: #FECDD3;
+    background: #FFF1F2;
+  }
+
+  .pdf-kpi-value {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #0F172A;
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+
+  .pdf-kpi-alert .pdf-kpi-value {
+    color: #EF4444;
+  }
+
+  .pdf-kpi-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .pdf-kpi-sub {
+    font-size: 0.65rem;
+    color: #94A3B8;
+  }
+
+  /* ── MAIN 2-COL CONTENT ── */
+  .pdf-main-row {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .pdf-section-card {
+    background: #FFFFFF;
+    border-radius: 10px;
+    border: 1px solid #E2E8F0;
+    padding: 14px 16px;
+    page-break-inside: avoid;
+  }
+
+  .pdf-section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    color: #0F172A;
+    margin: 0 0 6px;
+    border-bottom: 1px solid #F1F5F9;
+    padding-bottom: 6px;
+  }
+
+  .pdf-section-desc {
+    font-size: 0.7rem;
+    color: #64748B;
+    margin: 0 0 10px;
+    font-style: italic;
+  }
+
+  .pdf-chart-wrap {
+    width: 100%;
+    height: 220px;
+    position: relative;
+  }
+
+  /* ── WORKER TABLE ── */
+  .pdf-worker-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.75rem;
+  }
+
+  .pdf-worker-table th {
+    background: #F8FAFC;
+    color: #64748B;
+    font-weight: 700;
+    text-align: left;
+    padding: 6px 8px;
+    border-bottom: 2px solid #E2E8F0;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .pdf-worker-table td {
+    padding: 7px 8px;
+    border-bottom: 1px solid #F1F5F9;
+    color: #1E293B;
+  }
+
+  .pdf-worker-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .pdf-score-cell {
+    font-weight: 700;
+    color: #00C875;
+  }
+
+  /* ── INCIDENTS ── */
+  .pdf-full-section {
+    margin-bottom: 10px;
+  }
+
+  .pdf-no-incidents {
+    font-size: 0.8rem;
+    color: #22C55E;
+    font-weight: 600;
+    margin: 0;
+    padding: 10px 0;
+  }
+
+  .print-log-entry {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: #F8FAFC;
+    border-left: 3px solid #0EA5E9;
+    margin-bottom: 6px;
+    color: #334155;
+  }
+
+  .print-log-entry.danger {
+    border-left-color: #EF4444;
+    background: #FEF2F2;
+    color: #991B1B;
+  }
+
+  /* ── FOOTER ── */
+  .pdf-footer {
+    border-top: 1px solid #E2E8F0;
+    padding-top: 8px;
+    font-size: 0.65rem;
+    color: #94A3B8;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .pdf-disclaimer {
+    font-style: italic;
+  }
+}
 
 .hidden-print-only {
   display: none;
